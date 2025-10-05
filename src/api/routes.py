@@ -5,6 +5,9 @@ from flask import Flask, request, jsonify, url_for, Blueprint
 from api.models import db, User
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
+from sqlalchemy import select
+from flask_jwt_extended import create_access_token
+
 
 api = Blueprint('api', __name__)
 
@@ -20,3 +23,26 @@ def handle_hello():
     }
 
     return jsonify(response_body), 200
+
+
+@api.route('/register', methods=['POST'])
+def register():
+    body = request.json
+    new_user = User(email=body['email'], password=body['password'])
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({"success": True, "data": "user register log in now"}), 201
+
+@api.route('/login', methods=['POST'])
+def login():
+    body = request.json
+    query = select(User).where(User.email == body['email'])
+    user = db.session.execute(query)
+    if user is None:
+        return jsonify({"success": False, "data": "user not found"}), 404
+
+    if user.password != body["password"]:
+         return jsonify({"success": False, "data": "wrong email/password"}), 400
+
+    token = create_access_token(identity=str(user.id))
+    return jsonify({"success": True, "data": "user logged in", "token": token}), 200
