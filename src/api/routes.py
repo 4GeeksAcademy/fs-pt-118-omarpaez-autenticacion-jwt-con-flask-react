@@ -6,8 +6,8 @@ from api.models import db, User
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
 from sqlalchemy import select
-from flask_jwt_extended import create_access_token
-
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from werkzeug.security import generate_password_hash, check_password_hash
 
 api = Blueprint('api', __name__)
 
@@ -28,7 +28,10 @@ def handle_hello():
 @api.route('/register', methods=['POST'])
 def register():
     body = request.json
-    new_user = User(email=body['email'], password=body['password'])
+    if not body["password"]:
+        return jsonify({"error": "Password is required"})
+    hashed_password = generate_password_hash(body["password"])
+    new_user = User(name=body['name'], role=body['role'], email=body['email'], password=hashed_password, is_active = True)
     db.session.add(new_user)
     db.session.commit()
     return jsonify({"success": True, "data": "user register log in now"}), 201
@@ -37,12 +40,27 @@ def register():
 def login():
     body = request.json
     query = select(User).where(User.email == body['email'])
-    user = db.session.execute(query)
-    if user is None:
+    user = db.session.execute(query).scalar_one_or_none()
+  
+    if not user:
         return jsonify({"success": False, "data": "user not found"}), 404
 
-    if user.password != body["password"]:
-         return jsonify({"success": False, "data": "wrong email/password"}), 400
+    if not body["password"]:
+        return jsonify({"success": False, "data": "Password is required"})
+    
+    if not check_password_hash(user.password, body["password"]):
+        return jsonify({"success": False, "data": "Invalid password"}), 401
+  
 
     token = create_access_token(identity=str(user.id))
     return jsonify({"success": True, "data": "user logged in", "token": token}), 200
+
+@api.route('/private', methods=['GET'])
+@jwt_required()
+def private():
+     id = get_jwt_identity()
+     
+     query = select(User).where(User.id == id)
+     userData = db.session.execute(query).scalar_one()
+     
+     return jsonify(userData.serialize())

@@ -1,29 +1,80 @@
+import { useState } from "react"
+import userServices from "../services/userServices"
+import useGlobalReducer from "../hooks/useGlobalReducer"
+import { useNavigate } from "react-router-dom"
+const Login = () =>{
+    const navigate = useNavigate()
+    const [error, setError] = useState()
+    const [formData, setFormData] = useState({
+        email:"",
+        password:""
 
-const Login = () => {
+    })
+    const {store, dispatch} = useGlobalReducer()
+    const handleChange = (e) =>{
+        const {name, value} = e.target 
+        setFormData({...formData, [name]: value})
 
-    return (
-        <>
-            <form>
-                <div class="mb-3">
-                    <label for="exampleInputEmail1" class="form-label">Email address</label>
-                    <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp"></input>
-                        <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
-                </div>
-                <div class="mb-3">
-                    <label for="exampleInputPassword1" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="exampleInputPassword1"></input>
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="exampleCheck1"></input>
-                        <label class="form-check-label" for="exampleCheck1">Check me out</label>
-                </div>
-                <button type="submit" class="btn btn-primary">Submit</button>
-            </form>
+    }
 
-        </>
-    )
+    const handleSubmit = (e) =>{
+        e.preventDefault()
+        userServices.login(formData).then(data =>{
+           
+            if(data.success){
+                localStorage.setItem('token', data.token)
+                dispatch({type:'logged_in'})
+                
+                navigate('/private')
+            } else {
+                setError(data.data)
+            }
+        } )
+    }
 
 
+
+      return (
+        <div className="container w-50 my-5">
+          {error && (
+            <div class="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+          <form className="form-style" onSubmit={handleSubmit}>
+            <h2 className="text-center">Inciar sesión</h2>
+            <div className="mb-3">
+              <label className="form-label">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                name="email"
+                onChange={handleChange}
+                className="form-control"
+                id="exampleInputEmail1"
+                aria-describedby="emailHelp"
+              ></input>
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Password</label>
+              <input
+                type="password"
+                alue={formData.password}
+                name="password"
+                onChange={handleChange}
+                className="form-control"
+                id="exampleInputPassword1"
+              ></input>
+            </div>
+
+            <button type="submit" className="btn btn-primary">
+              Enviar
+            </button>
+          </form>
+        </div>
+      );
+
+    
 }
 
 export default Login
